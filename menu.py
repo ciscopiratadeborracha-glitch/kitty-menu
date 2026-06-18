@@ -4,124 +4,136 @@ import subprocess
 import sys
 import time
 
-PASTA_MENU = os.path.expanduser("~/kitty-menu")
+MENU_DIR = os.path.expanduser("~/kitty-menu")
+
+def comando(cmd):
+    return subprocess.run(
+        cmd,
+        cwd=MENU_DIR,
+        capture_output=True,
+        text=True
+    )
+
+def atualizar_agora(tela):
+    tela.clear()
+    tela.addstr(2, 2, "Atualizando...")
+    tela.refresh()
+
+    resultado = comando(["git", "pull", "origin", "main"])
+
+    tela.clear()
+    tela.addstr(2, 2, "Resultado da atualização:")
+    tela.addstr(4, 2, resultado.stdout[:70])
+    tela.addstr(5, 2, resultado.stderr[:70])
+    tela.addstr(7, 2, "Reiniciando menu...")
+    tela.refresh()
+    time.sleep(2)
+
+    os.execv(sys.executable, [sys.executable] + sys.argv)
 
 def procurar_atualizacao(tela):
     tela.clear()
-    tela.addstr(1, 2, "PROCURAR ATUALIZAÇÃO")
-    tela.addstr(3, 2, "Verificando atualizações...")
+    tela.addstr(2, 2, "Procurando atualização...")
     tela.refresh()
 
-    try:
-        os.chdir(PASTA_MENU)
+    comando(["git", "fetch", "origin", "main"])
 
-        subprocess.run(["git", "fetch"], check=True)
+    local = comando(["git", "rev-parse", "HEAD"]).stdout.strip()
+    remoto = comando(["git", "rev-parse", "origin/main"]).stdout.strip()
 
-        local = subprocess.check_output(["git", "rev-parse", "HEAD"]).decode().strip()
-        remoto = subprocess.check_output(["git", "rev-parse", "origin/main"]).decode().strip()
+    if local == remoto:
+        mensagem(tela, "Seu menu já está atualizado.")
+        return
 
-        if local == remoto:
-            tela.addstr(5, 2, "Seu menu já está atualizado.")
-            tela.addstr(7, 2, "Pressione ENTER para voltar.")
-            tela.refresh()
-            esperar_enter(tela)
-        else:
-            tela.addstr(5, 2, "Atualização encontrada!")
-            tela.addstr(6, 2, "Atualizando...")
-            tela.refresh()
+    log = comando([
+        "git", "log",
+        "--oneline",
+        "HEAD..origin/main"
+    ]).stdout.strip()
 
-            subprocess.run(["git", "pull"], check=True)
+    tela.clear()
+    tela.addstr(1, 2, "NOVA ATUALIZAÇÃO ENCONTRADA")
+    tela.addstr(2, 2, "===========================")
 
-            tela.addstr(8, 2, "Atualização concluída!")
-            tela.addstr(9, 2, "Reiniciando menu...")
-            tela.refresh()
-            time.sleep(2)
+    linha = 4
+    for item in log.splitlines()[:5]:
+        tela.addstr(linha, 2, "- " + item[:65])
+        linha += 1
 
-            os.execv(sys.executable, [sys.executable] + sys.argv)
+    tela.addstr(linha + 1, 2, "Deseja atualizar agora?")
+    tela.addstr(linha + 3, 2, "> Sim")
+    tela.addstr(linha + 4, 2, "  Não")
+    tela.refresh()
 
-    except Exception as erro:
-        tela.addstr(5, 2, "Erro ao procurar atualização:")
-        tela.addstr(6, 2, str(erro))
-        tela.addstr(8, 2, "Pressione ENTER para voltar.")
-        tela.refresh()
-        esperar_enter(tela)
+    escolha = 0
 
-def esperar_enter(tela):
     while True:
         tecla = tela.getch()
-        if tecla in [10, 13, curses.KEY_ENTER]:
-            break
 
-def desenhar_menu(tela, titulo, opcoes, selecionado):
+        if tecla == curses.KEY_UP or tecla == curses.KEY_DOWN:
+            escolha = 1 - escolha
+
+        elif tecla in [10, 13, curses.KEY_ENTER]:
+            if escolha == 0:
+                atualizar_agora(tela)
+            else:
+                return
+
+        tela.addstr(linha + 3, 2, ("> " if escolha == 0 else "  ") + "Sim")
+        tela.addstr(linha + 4, 2, ("> " if escolha == 1 else "  ") + "Não")
+        tela.refresh()
+
+def mensagem(tela, texto):
     tela.clear()
-
-    tela.addstr(1, 2, "================================")
-    tela.addstr(2, 2, f"        {titulo}")
-    tela.addstr(3, 2, "================================")
-
-    for i, opcao in enumerate(opcoes):
-        y = 5 + i
-
-        if i == selecionado:
-            tela.addstr(y, 2, f"> {opcao}")
-        else:
-            tela.addstr(y, 2, f"  {opcao}")
-
-    tela.addstr(10, 2, "Use ↑ ↓ ou W/S para mover")
-    tela.addstr(11, 2, "ENTER para escolher")
+    tela.addstr(2, 2, texto)
+    tela.addstr(4, 2, "Pressione ENTER para voltar.")
     tela.refresh()
 
-def menu_configuracao(tela):
-    opcoes = ["Procurar atualização", "Voltar"]
+    while tela.getch() not in [10, 13, curses.KEY_ENTER]:
+        pass
+
+def desenhar(tela, titulo, opcoes, selecionado):
+    tela.clear()
+    tela.addstr(1, 2, titulo)
+    tela.addstr(2, 2, "=" * len(titulo))
+
+    for i, opcao in enumerate(opcoes):
+        marcador = ">" if i == selecionado else " "
+        tela.addstr(4 + i, 2, f"{marcador} {opcao}")
+
+    tela.addstr(9, 2, "Use as setas ↑ ↓ e ENTER")
+    tela.refresh()
+
+def escolher(tela, titulo, opcoes):
     selecionado = 0
 
     while True:
-        desenhar_menu(tela, "CONFIGURAÇÃO", opcoes, selecionado)
-
+        desenhar(tela, titulo, opcoes, selecionado)
         tecla = tela.getch()
 
-        if tecla in [curses.KEY_UP, ord("w"), ord("W")]:
-            selecionado -= 1
-            if selecionado < 0:
-                selecionado = len(opcoes) - 1
+        if tecla == curses.KEY_UP:
+            selecionado = (selecionado - 1) % len(opcoes)
 
-        elif tecla in [curses.KEY_DOWN, ord("s"), ord("S")]:
-            selecionado += 1
-            if selecionado >= len(opcoes):
-                selecionado = 0
+        elif tecla == curses.KEY_DOWN:
+            selecionado = (selecionado + 1) % len(opcoes)
 
         elif tecla in [10, 13, curses.KEY_ENTER]:
-            if selecionado == 0:
-                procurar_atualizacao(tela)
-            elif selecionado == 1:
-                break
+            return selecionado
 
-def menu_principal(tela):
+def main(tela):
     curses.curs_set(0)
     tela.keypad(True)
 
-    opcoes = ["Configuração", "Sair"]
-    selecionado = 0
-
     while True:
-        desenhar_menu(tela, "KITTY MENU", opcoes, selecionado)
+        opcao = escolher(tela, "KITTY MENU", ["Configuração", "Sair"])
 
-        tecla = tela.getch()
+        if opcao == 0:
+            config = escolher(tela, "CONFIGURAÇÃO", ["Procurar atualização", "Voltar"])
 
-        if tecla in [curses.KEY_UP, ord("w"), ord("W")]:
-            selecionado -= 1
-            if selecionado < 0:
-                selecionado = len(opcoes) - 1
+            if config == 0:
+                procurar_atualizacao(tela)
 
-        elif tecla in [curses.KEY_DOWN, ord("s"), ord("S")]:
-            selecionado += 1
-            if selecionado >= len(opcoes):
-                selecionado = 0
+        elif opcao == 1:
+            break
 
-        elif tecla in [10, 13, curses.KEY_ENTER]:
-            if selecionado == 0:
-                menu_configuracao(tela)
-            elif selecionado == 1:
-                break
-
-curses.wrapper(menu_principal)
+curses.wrapper(main)
