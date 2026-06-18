@@ -34,7 +34,7 @@ def abrir_app(app):
 
 def mensagem(tela, texto):
     tela.clear()
-    tela.addstr(2, 2, texto)
+    tela.addstr(2, 2, texto[:70])
     tela.addstr(4, 2, "Pressione ENTER para voltar.")
     tela.refresh()
 
@@ -74,6 +74,27 @@ def atualizar(tela):
     os.system("cd ~/kitty-menu && git pull origin main")
     input("\nPressione ENTER para voltar ao menu...")
     os.execv(sys.executable, [sys.executable] + sys.argv)
+
+def menu_arquivos(tela):
+    pastas = [
+        ("Downloads", "~/Downloads"),
+        ("Documentos", "~/Documentos"),
+        ("Imagens", "~/Imagens"),
+        ("Vídeos", "~/Vídeos"),
+        ("Pasta pessoal", "~")
+    ]
+
+    opcoes = [p[0] for p in pastas] + ["Voltar"]
+
+    while True:
+        escolha = escolher(tela, "ARQUIVOS", opcoes)
+
+        if escolha == len(opcoes) - 1:
+            break
+
+        caminho = os.path.expanduser(pastas[escolha][1])
+        os.system(f"xdg-open '{caminho}' >/dev/null 2>&1 &")
+        mensagem(tela, f"Abrindo {pastas[escolha][0]}...")
 
 def desenhar(tela, titulo, opcoes, selecionado):
     tela.clear()
@@ -144,15 +165,21 @@ def main(tela):
     tela.keypad(True)
 
     while True:
-        escolha = escolher(tela, "MENU", ["Aplicativos", "Instalado", "Configuração", "Sair"])
+        escolha = escolher(
+            tela,
+            "MENU",
+            ["Aplicativos", "Instalado", "Arquivos", "Configuração", "Sair"]
+        )
 
         if escolha == 0:
             menu_aplicativos(tela)
         elif escolha == 1:
             menu_instalado(tela)
         elif escolha == 2:
-            menu_configuracao(tela)
+            menu_arquivos(tela)
         elif escolha == 3:
+            menu_configuracao(tela)
+        elif escolha == 4:
             break
 
 curses.wrapper(main)

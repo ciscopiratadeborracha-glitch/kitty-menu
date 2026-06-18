@@ -1,0 +1,6 @@
+v1.0.0
+- Primeira versão do カウアン
+- Menu de aplicativos
+- Aba instalado
+- Gerenciador de arquivos
+- Atualização pelo GitHub
