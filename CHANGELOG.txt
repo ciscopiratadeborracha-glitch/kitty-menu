@@ -1,6 +1,9 @@
 v1.0.0
-- Primeira versão do カウアン
-- Menu de aplicativos
-- Aba instalado
-- Gerenciador de arquivos
-- Atualização pelo GitHub
+- Menu avançado
+- Aplicativos
+- Instalados
+- Arquivos
+- Jogos
+- Sistema
+- Configuração
+- Atualizações pelo GitHub
