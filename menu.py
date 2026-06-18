@@ -169,8 +169,8 @@ def desenhar(tela, titulo, opcoes, selecionado):
     tela.clear()
 
     tela.addstr(1, 2, "╔══════════════════════════════════════╗")
-    tela.addstr(2, 2, "║              カウアン                ║")
-    tela.addstr(3, 2, f"║           Sistema v{ler_versao():<8}     )          ║
+    tela.addstr(2, 2, "║              カウアン               ║")
+    tela.addstr(3, 2, f"║            Sistema v{ler_versao():<8}          ║")
     tela.addstr(4, 2, "╚══════════════════════════════════════╝")
 
     tela.addstr(6, 2, titulo)
